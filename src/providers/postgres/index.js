@@ -65,6 +65,55 @@ export async function save({ entity, data, parent, }) {
     console.log(response.rows[0]);
 }
 
+export async function batchExchange({ limit, from = 0, }) {
+    const { rows, } = await getClient()
+        .query(`
+            SELECT * FROM "exchange"
+            WHERE "bid" IS NULL
+            AND "id" > $1
+            ORDER BY "id"
+            LIMIT $2;
+        `,
+        [
+            from,
+            limit,
+        ]);
+    return rows;
+}
+
+export async function getRate(props) {
+    const response = getClient().query(`
+        SELECT * FROM "rate"
+        WHERE "exchange_office" = $1
+        AND "date" <= $2
+        AND "from" = $3
+        AND "to" = $4
+        ORDER BY "date" DESC
+        LIMIT 1;
+    `,
+    [
+        props.exchangeOffice,
+        props.date,
+        props.from,
+        props.to,
+    ]);
+
+    return response.rows[0];
+}
+
+export async function updateExchangeWithBid(props) {
+    getClient().query(`
+        UPDATE exchange
+        SET bid = $1
+        WHERE id = $2;
+    `,
+    [
+        props.bid,
+        props.id,
+    ]);
+}
+
 export async function destroy() {
     getClient().end();
+    console.log(`destroyed postgres client`);
 }
