@@ -8,6 +8,7 @@ import {
     COUNTRY
 } from "../constants.js";
 import { getProvider } from "../providers/get-provider.js";
+import { createEntity } from "../models/index.js";
 
 const logFile = createWriteStream(`logs/debug.log`);
 const providerArg = process.argv[2];
@@ -118,7 +119,13 @@ async function parallel(promise) {
 
 async function finishCurrent(cur, retry = 0) {
     try {
-        await provider.save(cur);
+        await provider.save(
+            cur.entity,
+            createEntity(
+                cur,
+                ![EXCHANGE_OFFICE, COUNTRY,].includes(cur.entity)
+            )
+        );
         count++;
         logFile.write(`${JSON.stringify(cur, null, 2)}\n`);
     } catch (error) {

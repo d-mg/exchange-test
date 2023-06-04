@@ -21,7 +21,6 @@ await batchExecute(
                 id: exchange.id,
                 bid: exchange.ask / (rate.out / rate.in),
             });
-            console.log(`for ask: ${exchange.ask} found in: ${rate.in} out ${rate.out} bid: ${exchange.ask / (rate.out / rate.in)}`);
         }));
     });
 
