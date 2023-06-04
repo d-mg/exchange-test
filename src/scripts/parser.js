@@ -1,42 +1,61 @@
 import assert from "node:assert";
 import { createInterface } from "node:readline";
 import { createReadStream } from "node:fs";
+import { createParallel } from "../parallel.js";
+import { createRetryable } from "../retry.js";
+import { createLogger } from "../log-script-to-file.js";
+import { createEntity } from "../models/index.js";
+import { getProvider } from "../providers/get-provider.js";
 import {
+    MAX_RETRIES,
     MAX_PARALLEL,
     EXCHANGE_OFFICE,
     EXCHANGE,
     RATE,
     COUNTRY
 } from "../constants.js";
-import { getProvider } from "../providers/get-provider.js";
-import { createEntity } from "../models/index.js";
-import { createParallel } from "../parallel.js";
-import { createLogger } from "../log-script-to-file.js";
-
-const MAX_RETRIES = 3;
 
 const log = createLogger(`parser-${Date.now()}`);
 const parallel = createParallel(MAX_PARALLEL);
-
-let current = null;
 
 const providerArg = process.argv[2];
 assert(providerArg, `provider missing as first argument`);
 const fileArg = process.argv[3];
 assert(fileArg, `file missing as second argument`);
 const provider = getProvider(providerArg);
-const readline = createInterface({
+const file = createInterface({
     input: createReadStream(fileArg),
 });
 
-await readLines();
-current && await parallel.execute(finishCurrent(current));
+const SAVE_ERR_MSG = `An error happened while trying to finish an entity`;
+
+const finish = createRetryable({
+    time: 5000,
+    max: MAX_RETRIES,
+    fn: (cur) =>
+        provider.save(
+            cur.entity,
+            createEntity(
+                cur,
+                ![EXCHANGE_OFFICE, COUNTRY,].includes(cur.entity)
+            )
+        ),
+    onActionSuccess: ({ arg, }) => log.onAction(arg),
+    onActionError: ({ error, arg, retryIn, }) =>
+        log.onError(`${SAVE_ERR_MSG}, will try again in ${retryIn} seconds`, error, { arg, }),
+    onError : async ({ error, arg, }) =>
+        log.onError(`${SAVE_ERR_MSG}, max retries reached`, error, { arg, }),
+});
+
+let current = null;
+await read();
+current && await parallel.execute(finish(current));
 await parallel.finish();
 await provider.destroy();
 log.finish();
 
-async function readLines() {
-    for await (const line of readline) {
+async function read() {
+    for await (const line of file) {
         switch (line) {
         case `exchange-offices`:
         case `    exchanges`:
@@ -87,7 +106,7 @@ async function initCurrent({
     data = {},
 }) {
     assert(entity, `entity prop of argument missing`);
-    previous && await parallel.execute(finishCurrent(previous));
+    previous && await parallel.execute(finish(previous));
 
     return {
         entity,
@@ -109,38 +128,4 @@ function addProp(cur, line) {
             [prop.trimStart()]: value,
         },
     };
-}
-
-async function finishCurrent(cur, retry = 0) {
-    try {
-        await provider.save(
-            cur.entity,
-            createEntity(
-                cur,
-                ![EXCHANGE_OFFICE, COUNTRY,].includes(cur.entity)
-            )
-        );
-        log.onActionSuccess(cur);
-    } catch (error) {
-        retry++;
-        if (retry >= MAX_RETRIES) {
-            console.error(
-                `An error happened while trying to finish an entity, max retries reached\n`,
-                error,
-                JSON.stringify({ current: cur, retry, }, null, 2)
-            );
-            log.onError(error);
-            await provider.destroy();
-            process.exit(0);
-        }
-        console.error(
-            `An error happened while trying to finish an entity, will try again in ${(5000 * retry) / 1000} seconds\n`,
-            error,
-            JSON.stringify({ current: cur, retry, }, null, 2)
-        );
-        await new Promise(resolve => setTimeout(async () => {
-            await finishCurrent(cur, retry);
-            resolve();
-        }, 5000 * retry));
-    }
 }

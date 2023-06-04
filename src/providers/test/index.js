@@ -1,10 +1,12 @@
+const failPercent = 50;
+
 let destroyed = false;
 
 function getRandom(min, max) {
     return Math.random() * (max - min) + min;
 }
 
-export async function save({ entity, }) {
+export async function save() {
     if (destroyed) {
         throw new Error(`Operation failed, provider destroyed`);
     }
@@ -12,8 +14,7 @@ export async function save({ entity, }) {
     const randomExecution = getRandom(0, 1000);
 
     await new Promise((resolve, reject) => setTimeout(async () => {
-        if (randomError > 25) {
-            console.log(`saved: `, JSON.stringify(entity, null, 2));
+        if (randomError > failPercent) {
             resolve();
         } else {
             reject(new Error(`something went wrong`));
@@ -22,6 +23,6 @@ export async function save({ entity, }) {
 }
 
 export function destroy() {
-    console.log(`running provider cleanup`);
     destroyed = true;
+    console.log(`destroyed test provider`);
 }

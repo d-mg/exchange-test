@@ -1,5 +1,5 @@
 export async function batchExecute({ limit, from = 0, }, batchFn, executeFn) {
-    const res = await batchFn({ limit: 1, from, });
+    const res = await batchFn({ limit, from, });
     await executeFn(res);
     if (res.length) {
         await batchExecute(

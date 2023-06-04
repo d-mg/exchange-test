@@ -159,5 +159,5 @@ export async function updateExchangeWithBid(props) {
 
 export async function destroy() {
     await getClient().end();
-    console.log(`destroyed postgres client`);
+    console.log(`destroyed postgres provider`);
 }

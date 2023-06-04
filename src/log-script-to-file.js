@@ -6,10 +6,10 @@ export function createLogger(fileName) {
     let count = 0;
 
     return {
-        log(msg) {
+        message(msg) {
             file.write(`${msg}\n`);
         },
-        onActionSuccess(msg) {
+        onAction(msg) {
             count++;
             file.write(
                 msg === `string` ?
@@ -17,11 +17,11 @@ export function createLogger(fileName) {
                     `${JSON.stringify(msg, null, 2)}\n`
             );
         },
-        onError(error) {
-            file.write(`Count: ${count}\nStopped due to error:\n${error}\n`);
+        onError(msg, error, context) {
+            file.write(`${msg}\n${error}\n${JSON.stringify(context, null, 2)}`);
         },
         finish() {
-            file.write(`Count: ${count}\nCompleted successfully\n`);
+            file.write(`Finished script\nAction count: ${count}\n`);
         },
     };
 }
