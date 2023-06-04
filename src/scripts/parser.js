@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { createInterface } from "node:readline";
-import { createReadStream, createWriteStream } from "node:fs";
+import { createReadStream } from "node:fs";
 import {
     EXCHANGE_OFFICE,
     EXCHANGE,
@@ -9,8 +9,16 @@ import {
 } from "../constants.js";
 import { getProvider } from "../providers/get-provider.js";
 import { createEntity } from "../models/index.js";
+import { createLogger } from "../log-script-to-file.js";
 
-const logFile = createWriteStream(`logs/debug.log`);
+const log = createLogger(`parser-${Date.now()}`);
+
+const MAX_RETRIES = 3;
+const MAX_PARALLEL = 5;
+
+let current = null;
+let running = [];
+
 const providerArg = process.argv[2];
 assert(providerArg, `provider missing as first argument`);
 const fileArg = process.argv[3];
@@ -19,18 +27,12 @@ const provider = getProvider(providerArg);
 const readline = createInterface({
     input: createReadStream(fileArg),
 });
-const MAX_RETRIES = 3;
-const MAX_PARALLEL = 5;
-
-let current = null;
-let running = [];
-let count = 0;
 
 await readLines();
 current && await parallel(finishCurrent(current));
 await Promise.allSettled(running);
 await provider.destroy();
-logFile.write(`Saved entities: ${count}\nCompleted successfully\n`);
+log.finish();
 
 async function readLines() {
     for await (const line of readline) {
@@ -126,8 +128,7 @@ async function finishCurrent(cur, retry = 0) {
                 ![EXCHANGE_OFFICE, COUNTRY,].includes(cur.entity)
             )
         );
-        count++;
-        logFile.write(`${JSON.stringify(cur, null, 2)}\n`);
+        log.onActionSuccess(cur);
     } catch (error) {
         retry++;
         if (retry >= MAX_RETRIES) {
@@ -136,7 +137,8 @@ async function finishCurrent(cur, retry = 0) {
                 error,
                 JSON.stringify({ current: cur, retry, }, null, 2)
             );
-            logFile.write(`Saved entities: ${count}\nStopped due to error:\n${error}\n`);
+            log.onError(error);
+            await provider.destroy();
             process.exit(0);
         }
         console.error(

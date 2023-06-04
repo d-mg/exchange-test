@@ -2,6 +2,9 @@ import assert from "node:assert";
 import { batchExecute } from '../batch-execute.js';
 import { getProvider } from "../providers/get-provider.js";
 import { calculateBid } from "../calculate-bid.js";
+import { createLogger } from "../log-script-to-file.js";
+
+const log = createLogger(`calculate-bid-${Date.now()}`);
 
 const providerArg = process.argv[2];
 assert(providerArg, `provider missing as first argument`);
@@ -19,13 +22,14 @@ await batchExecute(
                     return;
                 }
 
-                await provider.updateExchangeWithBid(
-                    calculateBid(exchange, rate)
-                );
+                const exchangeWithBid = calculateBid(exchange, rate);
+                await provider.updateExchangeWithBid(exchangeWithBid);
+                log.onActionSuccess(exchangeWithBid);
             } catch (error) {
-                console.error(error);
+                log.onError(error);
             }
         }));
     });
 
 await provider.destroy();
+log.finish();
