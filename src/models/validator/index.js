@@ -1,8 +1,25 @@
 import assert from "node:assert";
+import { toDateString } from "../transform/index.js";
 
-export function validator({ name, entity, partial = false, }) {
-    assert(name, `validator needs an entity name`);
-    assert(entity, `validator needs an entity object`);
+function message(msg, entity, property) {
+    if (entity) {
+        if (msg) {
+            return `entity ${entity} needs it's property ${property} ${msg}`;
+        }
+        return `entity ${entity} needs a property ${property}`;
+    }
+    if (msg) {
+        return `expected value ${msg}`;
+    }
+    return `expected a value`;
+}
+
+export function validator(args) {
+    const { name, entity, partial = false, } = args || {};
+    if (args) {
+        assert(name, `validator needs an entity name`);
+        assert(entity, `validator needs an entity object`);
+    }
 
     return {
         isInteger,
@@ -12,62 +29,58 @@ export function validator({ name, entity, partial = false, }) {
         isDateString,
     };
 
-    function isInteger(property) {
-        const value = entity[property];
+    function isInteger(arg) {
+        const value = args ? entity[arg] : arg;
         partial || assert(
             value === 0 || value,
-            `entity ${name} needs a property ${property}`
+            message(null, name, arg)
         );
         value && assert(
             Number.isInteger(value),
-            `entity ${name} needs it's property ${property} to be an integer`
+            message(`to be an integer`, name, arg)
         );
     }
 
-    function isDecimal(property) {
-        const value = entity[property];
+    function isDecimal(arg) {
+        const value = args ? entity[arg] : arg;
         partial || assert(
             value === 0 || value,
-            `entity ${name} needs a property ${property}`
+            message(null, name, arg)
         );
         value && assert(
             typeof value !== `string` && !isNaN(value - parseFloat(value)),
-            `entity ${name} needs it's property ${property} to be an integer`
+            message(`to be an integer`, name, arg)
         );
     }
 
-    function isString(property, length) {
-        const value = entity[property];
-        partial || assert(value, `entity ${name} needs a property ${property}`);
+    function isString(arg, length) {
+        const value = args ? entity[arg] : arg;
+        partial || assert(value, `entity ${name} needs it's property ${arg}`);
         value && assert(
             typeof value === `string`,
-            `entity ${name} needs it's property ${property} to be a string`
+            message(`to be an string`, name, arg)
         );
         length && value && assert(
             value.length === 3,
-            `entity ${name} needs it's property ${property} to be a string of ${length} characters`
+            message(`to be a string of ${length} characters`, name, arg)
         );
     }
 
-    function isCurrencyString(property) {
-        const value = entity[property];
-        isString(property);
+    function isCurrencyString(arg) {
+        const value = args ? entity[arg] : arg;
+        isString(arg);
         value && assert(
             /\d+.\d{2}$/.test(value),
-            `entity ${name} needs it's property ${property} to be a currency string`
+            message(`to be a currency string`, name, arg)
         );
     }
 
-    function isDateString(property) {
-        const value = entity[property];
-        isString(property);
-        const d = new Date(value);
-        const month = d.getMonth() + 1;
-        const date = `${d.getFullYear()}-${month < 10 ? `0${month}` : month}-${d.getDate()}` +
-        ` ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
+    function isDateString(arg) {
+        const value = args ? entity[arg] : arg;
+        isString(arg);
         value && assert(
-            date === value,
-            `entity ${name} needs it's property ${property} to be a date string`
+            toDateString(value) === value,
+            message(`to be a date string`, name, arg)
         );
     }
 }

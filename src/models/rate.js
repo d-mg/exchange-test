@@ -1,16 +1,19 @@
 import { validator } from "./validator/index.js";
 import { EXCHANGE } from "../constants.js";
+import { toDateString } from "./transform/index.js";
 
-export function create({ data, parent, }, partial = false) {
+export function create(data, partial = false, parent) {
     const entity = {
         id: data.id && Number(data.id),
-        exchangeOffice: parent.data.id && Number(parent.data.id),
+        exchangeOffice: parent ?
+            parent.data.id && Number(parent.data.id) :
+            data.exchangeOffice && Number(data.exchangeOffice),
         from: data.from,
         to: data.to,
         in: data.in && Number(data.in),
         out: data.out && Number(data.out),
         reserve: data.reserve && Number(data.reserve),
-        date: data.date,
+        date: data.date && toDateString(data.date),
     };
     check(entity, partial);
     return entity;

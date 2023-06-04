@@ -9,3 +9,9 @@ export function toCurrencyString(str) {
             : `00`
     }`;
 }
+export function toDateString(str) {
+    const d = new Date(str);
+    const month = d.getMonth() + 1;
+    return `${d.getFullYear()}-${month < 10 ? `0${month}` : month}-${d.getDate()}` +
+    ` ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
+}

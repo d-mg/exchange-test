@@ -1,7 +1,7 @@
 import { validator } from "./validator/index.js";
 import { EXCHANGE_OFFICE } from "../constants.js";
 
-export function create({ data, }, partial = false) {
+export function create(data, partial = false) {
     const entity = {
         id: data.id && Number(data.id),
         name: data.name,

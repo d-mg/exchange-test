@@ -5,6 +5,10 @@ import {
     RATE,
     COUNTRY
 } from "../../constants.js";
+import { create as createExchangeOffice } from "../../models/exchange-office.js";
+import { create as createExchange } from "../../models/exchange.js";
+import { create as createRate } from "../../models/rate.js";
+import { create as createCountry } from "../../models/country.js";
 
 const config = {
     [EXCHANGE_OFFICE]: {
@@ -16,6 +20,13 @@ const config = {
             data.name,
             data.country,
         ],
+        createFromPostgres(row) {
+            return createExchangeOffice({
+                id: row.id,
+                name: row.name,
+                country: row.country,
+            });
+        },
     },
     [EXCHANGE]: {
         table: `exchange`,
@@ -29,6 +40,17 @@ const config = {
             data.bid,
             data.date,
         ],
+        createFromPostgres(row) {
+            return createExchange({
+                id: row.id,
+                exchangeOffice: row.exchange_office,
+                from: row.from,
+                to: row.to,
+                ask: row.ask,
+                bid: row.bid,
+                date: row.date,
+            }, true); // TODO: Remove partial after adding bids
+        },
     },
     [RATE]: {
         table: `rate`,
@@ -43,6 +65,19 @@ const config = {
             data.reserve,
             data.date,
         ],
+        createFromPostgres(row) {
+            return createRate({
+                id: row.id,
+                exchangeOffice: row.exchange_office,
+                from: row.from,
+                to: row.to,
+                in: row.in,
+                out: row.out,
+                reserve: row.reserve,
+                date: row.date,
+
+            });
+        },
     },
     [COUNTRY]: {
         table: `country`,
@@ -52,23 +87,28 @@ const config = {
             data.code,
             data.name,
         ],
+        createFromPostgres(row) {
+            return createCountry({
+                code: row.code,
+                name: row.name,
+            });
+        },
     },
 };
 
 export async function save(entity, data) {
     const { table, props, placeholders, values, } = config[entity];
-    const response = await getClient().query(
-        `INSERT INTO ${table}(${props}) VALUES(${placeholders}) RETURNING *`,
+    await getClient().query(
+        `INSERT INTO ${table}(${props}) VALUES(${placeholders})`,
         values(data)
     );
-    // TODO: remove logging
-    console.log(response.rows[0]);
 }
 
 export async function batchExchange({ limit, from = 0, }) {
-    const { rows, } = await getClient()
+    const { table, createFromPostgres, } = config[EXCHANGE];
+    const response = await getClient()
         .query(`
-            SELECT * FROM "exchange"
+            SELECT * FROM "${table}"
             WHERE "bid" IS NULL
             AND "id" > $1
             ORDER BY "id"
@@ -78,12 +118,14 @@ export async function batchExchange({ limit, from = 0, }) {
             from,
             limit,
         ]);
-    return rows;
+
+    return response.rows.map(createFromPostgres);
 }
 
-export async function getRate(props) {
-    const response = getClient().query(`
-        SELECT * FROM "rate"
+export async function getRateForExchange(exchange) {
+    const { table, createFromPostgres, } = config[RATE];
+    const response = await getClient().query(`
+        SELECT * FROM "${table}"
         WHERE "exchange_office" = $1
         AND "date" <= $2
         AND "from" = $3
@@ -92,17 +134,19 @@ export async function getRate(props) {
         LIMIT 1;
     `,
     [
-        props.exchangeOffice,
-        props.date,
-        props.from,
-        props.to,
+        exchange.exchangeOffice,
+        exchange.date,
+        exchange.from,
+        exchange.to,
     ]);
 
-    return response.rows[0];
+    return response.rows.length > 0 ?
+        createFromPostgres(response.rows[0]) :
+        null;
 }
 
 export async function updateExchangeWithBid(props) {
-    getClient().query(`
+    await getClient().query(`
         UPDATE exchange
         SET bid = $1
         WHERE id = $2;
@@ -114,6 +158,6 @@ export async function updateExchangeWithBid(props) {
 }
 
 export async function destroy() {
-    getClient().end();
+    await getClient().end();
     console.log(`destroyed postgres client`);
 }

@@ -12,13 +12,13 @@ import { create as createCountry } from "./country.js";
 export function createEntity({ entity, data, parent, }, partial = false) {
     switch (entity) {
     case EXCHANGE_OFFICE:
-        return createExchangeOffice({ data, }, partial);
+        return createExchangeOffice(data, partial);
     case EXCHANGE:
-        return createExchange({ data, parent, }, partial);
+        return createExchange(data, partial, parent);
     case RATE:
-        return createRate({ data, parent, }, partial);
+        return createRate(data, partial, parent);
     case COUNTRY:
-        return createCountry({ data, }, partial);
+        return createCountry(data, partial);
     default:
         throw new Error(`unknown entity`);
     }

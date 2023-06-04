@@ -5,11 +5,13 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/scripts/parser.js",
-    "parser": "npm start",
-    "parser:postgres": "npm start postgres data/dump.txt",
-    "parser:test": "npm start test data/dump.txt",
-    "parser:print": "npm start print data/dump.txt",
+    "start": "node",
+    "parser": "npm start src/scripts/parser.js",
+    "parser:postgres": "npm run parser postgres data/dump.txt",
+    "parser:test": "npm run parser test data/dump.txt",
+    "parser:print": "npm run parser print data/dump.txt",
+    "calculate-bids": "npm start src/scripts/calculate-bids.js",
+    "calculate-bids:postgres": "npm run calculate-bids postgres",
     "services": "docker-compose up",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },

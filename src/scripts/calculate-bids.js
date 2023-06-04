@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import { batchExecute } from '../batch-execute.js';
 import { getProvider } from "../providers/get-provider.js";
+import { calculateBid } from "../calculate-bid.js";
 
 const providerArg = process.argv[2];
 assert(providerArg, `provider missing as first argument`);
@@ -11,16 +12,19 @@ await batchExecute(
     provider.batchExchange,
     async (exchanges) => {
         return Promise.allSettled(exchanges.map(async (exchange) => {
-            const rate = await provider.getRate({
-                exchangeOffice: exchange.exchange_office,
-                date: exchange.date,
-                from: exchange.from,
-                to: exchange.to,
-            });
-            await provider.updateExchangeWithBid({
-                id: exchange.id,
-                bid: exchange.ask / (rate.out / rate.in),
-            });
+            try {
+                const rate = await provider.getRateForExchange(exchange);
+                if (!rate) {
+                    console.log(`couldn't find rate for exchange`, JSON.stringify(exchange, null, 2));
+                    return;
+                }
+
+                await provider.updateExchangeWithBid(
+                    calculateBid(exchange, rate)
+                );
+            } catch (error) {
+                console.error(error);
+            }
         }));
     });
 
