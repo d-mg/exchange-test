@@ -2,6 +2,7 @@ import assert from "node:assert";
 import { createInterface } from "node:readline";
 import { createReadStream } from "node:fs";
 import {
+    MAX_PARALLEL,
     EXCHANGE_OFFICE,
     EXCHANGE,
     RATE,
@@ -9,15 +10,15 @@ import {
 } from "../constants.js";
 import { getProvider } from "../providers/get-provider.js";
 import { createEntity } from "../models/index.js";
+import { createParallel } from "../parallel.js";
 import { createLogger } from "../log-script-to-file.js";
 
-const log = createLogger(`parser-${Date.now()}`);
-
 const MAX_RETRIES = 3;
-const MAX_PARALLEL = 5;
+
+const log = createLogger(`parser-${Date.now()}`);
+const parallel = createParallel(MAX_PARALLEL);
 
 let current = null;
-let running = [];
 
 const providerArg = process.argv[2];
 assert(providerArg, `provider missing as first argument`);
@@ -29,8 +30,8 @@ const readline = createInterface({
 });
 
 await readLines();
-current && await parallel(finishCurrent(current));
-await Promise.allSettled(running);
+current && await parallel.execute(finishCurrent(current));
+await parallel.finish();
 await provider.destroy();
 log.finish();
 
@@ -86,7 +87,7 @@ async function initCurrent({
     data = {},
 }) {
     assert(entity, `entity prop of argument missing`);
-    previous && await parallel(finishCurrent(previous));
+    previous && await parallel.execute(finishCurrent(previous));
 
     return {
         entity,
@@ -108,15 +109,6 @@ function addProp(cur, line) {
             [prop.trimStart()]: value,
         },
     };
-}
-
-async function parallel(promise) {
-    running.push(promise);
-
-    if (MAX_PARALLEL <= running.length) {
-        await Promise.allSettled(running);
-        running = [];
-    }
 }
 
 async function finishCurrent(cur, retry = 0) {
