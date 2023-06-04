@@ -8,9 +8,9 @@ CREATE TABLE exchange (
     "exchange_office" integer NOT NULL,
     "from" varchar(3) NOT NULL,
     "to" varchar(3) NOT NULL,
-    "ask" decimal NOT NULL,
     "bid" decimal,
-    "date" date NOT NULL
+    "ask" decimal NOT NULL,
+    "date" timestamp NOT NULL
 );
 CREATE TABLE rate (
     "id" SERIAL CONSTRAINT rate_key PRIMARY KEY,
@@ -20,7 +20,7 @@ CREATE TABLE rate (
     "in" decimal NOT NULL,
     "out" decimal NOT NULL,
     "reserve" decimal NOT NULL,
-    "date" date NOT NULL
+    "date" timestamp NOT NULL
 );
 CREATE TABLE country (
     "code" varchar(3) CONSTRAINT country_key PRIMARY KEY,
