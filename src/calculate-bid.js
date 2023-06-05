@@ -10,10 +10,10 @@ export function calculateBid(exchange, rate) {
     checkRate(rate);
     validator().isCurrencyString(exchange.ask);
 
-    const askInt = Number(exchange.ask) * 100000;
-    const outInt = Number(rate.out) * 100000;
-    const inInt = Number(rate.in) * 100000;
-    const bid = (askInt / (outInt / inInt)) / 100000;
+    const askInt = Math.round(Number(exchange.ask) * 100000);
+    const outInt = Math.round(Number(rate.out) * 100000);
+    const inInt = Math.round(Number(rate.in) * 100000);
+    const bid = Math.round((askInt / (outInt / inInt)) / 1000) / 100;
 
     return createExchange({
         ...exchange,

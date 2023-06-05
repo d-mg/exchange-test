@@ -2,6 +2,7 @@ version: '3.1'
 
 services:
   db:
+    profiles: [ all, init, services, prod ]
     image: postgres
     restart: always
     environment:
@@ -13,7 +14,40 @@ services:
     volumes:
       - ./scripts/db.sql:/docker-entrypoint-initdb.d/db.sql
   adminer:
+    profiles: [ all, init, services, prod ]
     image: adminer
     restart: always
     ports:
       - 8081:8080
+    depends_on:
+      - db
+  init:
+    profiles: [ all, init ]
+    build: .
+    image: exchange-test-init
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  api:
+    profiles: [ all, prod ]
+    build: .
+    image: exchange-test-api
+    restart: always
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+    entrypoint: [ 'npm', 'run', 'api' ]
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres

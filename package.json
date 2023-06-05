@@ -5,14 +5,19 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node",
-    "parser": "npm start src/scripts/parser.js",
+    "start": "docker-compose --profile prod up",
+    "init": "docker-compose --profile init up",
+    "services": "docker-compose --profile services up -d",
+    "dev": "nodemon src/api/index.js postgres",
+    "api": "node src/api/index.js postgres",
+    "clean": "docker-compose --profile all down --rmi local -v;",
+    "parser": "node src/scripts/parser.js",
     "parser:postgres": "npm run parser postgres data/dump.txt",
     "parser:test": "npm run parser test data/dump.txt",
     "parser:print": "npm run parser print data/dump.txt",
-    "calculate-bids": "npm start src/scripts/calculate-bids.js",
+    "calculate-bids": "node src/scripts/calculate-bids.js",
     "calculate-bids:postgres": "npm run calculate-bids postgres",
-    "services": "docker-compose up",
+    "update-postgres": "node src/scripts/update-postgres.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "author": "Dries Goethuys",
@@ -22,6 +27,8 @@
     "jest": "^29.5.0"
   },
   "dependencies": {
+    "express": "^4.18.2",
+    "nodemon": "^2.0.22",
     "pg": "^8.11.0"
   }
 }

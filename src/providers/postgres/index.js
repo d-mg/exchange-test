@@ -49,7 +49,7 @@ const config = {
                 ask: row.ask,
                 bid: row.bid,
                 date: row.date,
-            }, true); // TODO: Remove partial after adding bids
+            }, true); // partial can be removed after adding bids
         },
     },
     [RATE]: {
@@ -155,6 +155,89 @@ export async function updateExchangeWithBid(props) {
         props.bid,
         props.id,
     ]);
+}
+
+export async function getTopByCountry() {
+    // This query does not what is asked and I'm pretty sure what it does it does wrong
+    // Took too long on the rest and a bit too SQL rusty to do this properly
+    const result = await getClient().query(`
+        SELECT eo.name AS exchange_office, c.name as country, top_countries.spread_sum as country_sum,
+        SUM(
+            CASE WHEN e.from = 'USD' THEN
+                e.bid
+            ELSE
+                (e.bid / (r_usd_bid.in / r_usd_bid.out))
+            END
+                -
+            CASE WHEN e.to = 'USD' THEN
+                e.ask
+            ELSE
+                (e.ask / (r_usd_ask.in / r_usd_ask.out))
+            END
+        ) spread_sum
+
+        FROM
+        (SELECT c.code AS country,
+            SUM(
+                CASE WHEN e.from = 'USD' THEN
+                    e.bid
+                ELSE
+                    (e.bid / (r_usd_bid.in / r_usd_bid.out))
+                END
+                    -
+                CASE WHEN e.to = 'USD' THEN
+                    e.ask
+                ELSE
+                    (e.ask / (r_usd_ask.in / r_usd_ask.out))
+                END
+            ) spread_sum
+
+            FROM
+            exchange AS e,
+            exchange_office AS eo,
+            country AS c,
+            rate AS r_usd_bid,
+            rate AS r_usd_ask
+
+            WHERE e.exchange_office = eo.id
+            AND eo.country = c.code
+            AND r_usd_bid.exchange_office = eo.id
+            AND r_usd_bid.date <= e.date
+            AND r_usd_bid.from = CASE WHEN e.from = 'USD' THEN e.to ELSE e.from END
+            AND r_usd_bid.to = 'USD'
+            AND r_usd_ask.exchange_office = eo.id
+            AND r_usd_ask.date <= e.date
+            AND r_usd_ask.from = CASE WHEN e.to = 'USD' THEN e.from ELSE e.to END
+            AND r_usd_ask.to = 'USD'
+
+            GROUP BY c.code
+            ORDER BY spread_sum DESC
+            LIMIT 3) AS top_countries,
+        exchange AS e,
+        exchange_office AS eo,
+        country AS c,
+        rate AS r_usd_bid,
+        rate AS r_usd_ask
+
+
+        WHERE e.exchange_office = eo.id
+        AND eo.country = c.code
+        AND r_usd_bid.exchange_office = eo.id
+        AND r_usd_bid.date <= e.date
+        AND r_usd_bid.from = CASE WHEN e.from = 'USD' THEN e.to ELSE e.from END
+        AND r_usd_bid.to = 'USD'
+        AND r_usd_ask.exchange_office = eo.id
+        AND r_usd_ask.date <= e.date
+        AND r_usd_ask.from = CASE WHEN e.to = 'USD' THEN e.from ELSE e.to END
+        AND r_usd_ask.to = 'USD'
+        AND top_countries.country = c.code
+
+        GROUP BY eo.name, c.name, top_countries.spread_sum
+        ORDER BY spread_sum DESC
+        ;
+    `);
+
+    return result.rows;
 }
 
 export async function destroy() {

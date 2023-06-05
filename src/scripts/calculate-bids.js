@@ -34,8 +34,7 @@ const updateWithRate = createRetryable({
     fn: async (exchange) => {
         const rate = await provider.getRateForExchange(exchange);
         if (!rate) {
-            log.message(`couldn't find rate for exchange: ${JSON.stringify(arg.exchange, null, 2)}`);
-            return;
+            throw new Error(`couldn't find rate`);
         }
 
         const exchangeWithBid = calculateBid(exchange, rate);
@@ -44,9 +43,9 @@ const updateWithRate = createRetryable({
     },
     onActionSuccess: ({ result, }) => log.onAction(result),
     onActionError: ({ error, arg, retryIn, }) =>
-        log.onError(`${UPDATE_ERR_MSG}, will try again in ${retryIn} seconds`, error.stack, { exchange: arg.exchange, }),
+        log.onError(`${UPDATE_ERR_MSG}, will try again in ${retryIn} seconds`, error.stack, { exchange: arg, }),
     onError: ({ error, arg, }) =>
-        log.onError(`${UPDATE_ERR_MSG}, max retries reached`, error.stack, { exchange: arg.exchange, }),
+        log.onError(`${UPDATE_ERR_MSG}, max retries reached`, error.stack, { exchange: arg, }),
 });
 
 await batchExecute(

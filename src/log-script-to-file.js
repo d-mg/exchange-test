@@ -18,7 +18,7 @@ export function createLogger(fileName) {
             );
         },
         onError(msg, error, context) {
-            file.write(`${msg}\n${error}\n${JSON.stringify(context, null, 2)}`);
+            file.write(`${msg}\n${error}\n${JSON.stringify(context, null, 2)}\n`);
         },
         finish() {
             file.write(`Finished script\nAction count: ${count}\n`);
